@@ -1,9 +1,28 @@
 import java.io.*;
 import java.util.*;
 
-class DuLieuKhongHopLeException extends Exception {
-    public DuLieuKhongHopLeException(String message) {
-        super(message);
+interface MienGiam {
+    long tinhGiam(long hocPhi);
+}
+
+class MienGiamCS implements MienGiam {
+    @Override
+    public long tinhGiam(long hocPhi) {
+        return (hocPhi * 50) / 100;
+    }
+}
+
+class MienGiamHN implements MienGiam {
+    @Override
+    public long tinhGiam(long hocPhi) {
+        return (hocPhi * 70) / 100;
+    }
+}
+
+class MienGiamHB implements MienGiam {
+    @Override
+    public long tinhGiam(long hocPhi) {
+        return Math.min(hocPhi, 3000000L);
     }
 }
 
@@ -11,6 +30,7 @@ abstract class SinhVien {
     protected String maSV;
     protected String maHe;
     protected int soTinChi;
+    protected MienGiam mienGiam;
     protected static final long DON_GIA = 450000L;
 
     public SinhVien(String maSV, String maHe, int soTinChi) {
@@ -23,11 +43,30 @@ abstract class SinhVien {
         return maSV;
     }
 
+    public String getMaHe() {
+        return maHe;
+    }
+
+    public void setMienGiam(MienGiam mienGiam) {
+        this.mienGiam = mienGiam;
+    }
+
     public abstract long hocPhi();
+
+    public long soTienGiam() {
+        if (mienGiam == null) {
+            return 0L;
+        }
+        return mienGiam.tinhGiam(hocPhi());
+    }
+
+    public long phaiNop() {
+        return hocPhi() - soTienGiam();
+    }
 
     @Override
     public String toString() {
-        return maSV + " " + maHe + " " + hocPhi();
+        return maSV + " " + maHe + " " + hocPhi() + " " + soTienGiam() + " " + phaiNop();
     }
 }
 
@@ -64,98 +103,73 @@ class SinhVienLT extends SinhVien {
     }
 }
 
-class QuanLyHocPhi {
-    private ArrayList<SinhVien> danhSach;
-
-    public QuanLyHocPhi() {
-        this.danhSach = new ArrayList<>();
-    }
-
-    public void themSinhVien(String maHe, String maSV, String soTinChiStr) throws DuLieuKhongHopLeException {
-        if (!maHe.equals("CQ") && !maHe.equals("CLC") && !maHe.equals("LT")) {
-            throw new DuLieuKhongHopLeException("Ma he khong hop le");
-        }
-
-        int soTinChi;
-        try {
-            soTinChi = Integer.parseInt(soTinChiStr);
-        } catch (NumberFormatException e) {
-            throw new DuLieuKhongHopLeException("So tin chi khong phai so nguyen");
-        }
-
-        if (soTinChi < 1 || soTinChi > 30) {
-            throw new DuLieuKhongHopLeException("So tin chi ngoai khoang cho phep");
-        }
-
-        for (SinhVien sv : danhSach) {
-            if (sv.getMaSV().equals(maSV)) {
-                throw new DuLieuKhongHopLeException("Trung ma sinh vien");
-            }
-        }
-
-        switch (maHe) {
-            case "CQ":
-                danhSach.add(new SinhVienCQ(maSV, soTinChi));
-                break;
-            case "CLC":
-                danhSach.add(new SinhVienCLC(maSV, soTinChi));
-                break;
-            case "LT":
-                danhSach.add(new SinhVienLT(maSV, soTinChi));
-                break;
-        }
-    }
-
-    public void sapXep() {
-        danhSach.sort((sv1, sv2) -> {
-            int cmp = Long.compare(sv2.hocPhi(), sv1.hocPhi());
-            if (cmp != 0) {
-                return cmp;
-            }
-            return sv1.getMaSV().compareTo(sv2.getMaSV());
-        });
-    }
-
-    public long tinhTongHocPhi() {
-        long tong = 0;
-        for (SinhVien sv : danhSach) {
-            tong += sv.hocPhi();
-        }
-        return tong;
-    }
-
-    public void inKetQua() {
-        for (SinhVien sv : danhSach) {
-            System.out.println(sv);
-        }
-        System.out.println("TONG " + tinhTongHocPhi());
-    }
-}
-
 public class Main {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
-        if (!sc.hasNextLine()) return;
+        if (!sc.hasNextInt()) return;
 
-        int n = Integer.parseInt(sc.nextLine().trim());
-        QuanLyHocPhi ql = new QuanLyHocPhi();
+        int n = sc.nextInt();
+        Map<String, SinhVien> danhSach = new LinkedHashMap<>();
 
         for (int i = 0; i < n; i++) {
-            String line = sc.nextLine().trim();
-            String[] parts = line.split("\\s+");
-            String maHe = parts[0];
-            String maSV = parts[1];
-            String soTinChiStr = parts[2];
+            String maHe = sc.next();
+            String maSV = sc.next();
+            int soTinChi = sc.nextInt();
 
-            try {
-                ql.themSinhVien(maHe, maSV, soTinChiStr);
-            } catch (DuLieuKhongHopLeException e) {
-                System.out.println("INVALID " + maSV);
+            switch (maHe) {
+                case "CQ":
+                    danhSach.put(maSV, new SinhVienCQ(maSV, soTinChi));
+                    break;
+                case "CLC":
+                    danhSach.put(maSV, new SinhVienCLC(maSV, soTinChi));
+                    break;
+                case "LT":
+                    danhSach.put(maSV, new SinhVienLT(maSV, soTinChi));
+                    break;
             }
         }
 
-        ql.sapXep();
-        ql.inKetQua();
+        int m = sc.nextInt();
+        for (int i = 0; i < m; i++) {
+            String maSV = sc.next();
+            String maCS = sc.next();
+
+            SinhVien sv = danhSach.get(maSV);
+            if (sv == null) {
+                System.out.println("NOT FOUND " + maSV);
+            } else {
+                switch (maCS) {
+                    case "CS":
+                        sv.setMienGiam(new MienGiamCS());
+                        break;
+                    case "HN":
+                        sv.setMienGiam(new MienGiamHN());
+                        break;
+                    case "HB":
+                        sv.setMienGiam(new MienGiamHB());
+                        break;
+                }
+            }
+        }
+
+        for (SinhVien sv : danhSach.values()) {
+            System.out.println(sv);
+        }
+
+        String[] thuTuHe = {"CQ", "CLC", "LT"};
+        for (String he : thuTuHe) {
+            int dem = 0;
+            long tongPhaiNop = 0;
+            for (SinhVien sv : danhSach.values()) {
+                if (sv.getMaHe().equals(he)) {
+                    dem++;
+                    tongPhaiNop += sv.phaiNop();
+                }
+            }
+            if (dem > 0) {
+                System.out.println(he + " " + dem + " " + tongPhaiNop);
+            }
+        }
 
         sc.close();
     }
